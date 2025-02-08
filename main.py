@@ -1,21 +1,12 @@
 from flask import Flask, request
 from dotenv import load_dotenv
-import os
-import requests
+from services import services_bp
+import asyncio
+from listener import listen_for_threads
 
-load_dotenv()
+
 app = Flask(__name__)
-API_KEY = os.getenv("API_KEY")
-
-@app.route("/ping", methods=["GET"])
-def ping():
-	return {"status": "Bot is running!"}
-
-@app.route("/fetch_posts",methods=["POST"])
-def fetch_posts():
-	course_id = os.getenv("COURSE_ID")
-	response = requests.get(f"https://us.edstem.org/api/courses/{course_id}/threads", headers={"Authorization": f"Bearer {API_KEY}"})
-	return response.json()
+app.register_blueprint(services_bp)
 
 if __name__ == "__main__":
-	app.run(debug=True)
+	asyncio.run(listen_for_threads())
