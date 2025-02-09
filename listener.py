@@ -1,57 +1,82 @@
 import asyncio
 import json
 import aiohttp
-import websockets
-import requests
 from config import BASE_URL, API_KEY, COURSE_ID
 
+# Include `_token` in WebSocket URL if required
+WS_URL = f"wss://us.edstem.org/api/stream"
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
-WS_URL = "wss://us.edstem.org/api/stream"
-
-async def fetch_latest_thread(thread_id):
-    res_url = f"{BASE_URL}/threads/{thread_id}"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(res_url, headers=HEADERS) as response:
-            if response.status == 200:
-                thread = await response.json()
-                print(f"New Post! {thread.get('thread', {}).get('title', 'Untitled')} (ID: {thread_id})")
-            else:
-                print(f"Failed to fetch thread {thread_id}, status: {response.status}")
 
 
-async def listen_for_threads():
-    attempt = 0
+async def listen_for_events():
+    """Test WebSocket connection, verify subscription, and print ALL events."""
     while True:
         try:
             async with aiohttp.ClientSession() as session:
-                """ Establish the WS Connection using AIOHTTP (WebSocket library
-					does not do a good job with appending the headers)
-                """
                 async with session.ws_connect(WS_URL, headers=HEADERS, heartbeat=60) as ws:
                     
-                    print("Connected to EdStem WebSocket!")
-                    
-                    subscribe_msg = json.dumps({
-                        "type": "course.subscribe",
-                        "oid": COURSE_ID,
-                    })
+                    print("✅ Connected to EdStem WebSocket!")
+
+                    # Ensure WebSocket is open before subscribing
+                    if ws.closed:
+                        print("❌ WebSocket closed unexpectedly. Reconnecting...")
+                        continue  
+
+                    # Send subscription message (ensure it matches Chrome's)
+                    subscribe_msg = json.dumps({"type": "course.subscribe", "oid": COURSE_ID})
+                    print(f"📌 Sending Subscription Request: {subscribe_msg}")
                     await ws.send_str(subscribe_msg)
-                    print(f"Subscribed to course {COURSE_ID}, listening for updates...")
+                    print(f"✅ Subscription message sent successfully!")
+
+                    # Wait for subscription confirmation
+                    subscription_verified = False
                     async for message in ws:
                         if message.type == aiohttp.WSMsgType.TEXT:
                             data = json.loads(message.data)
-                            if data.get("type") == "thread.new":
-                                thread_id = data["data"]["thread"]["id"]
-                                print(f"New Thread! Thread ID: {thread_id}")
-                                await fetch_latest_thread(thread_id)
+
+                            # Log every received event
+                            print(f"📩 WebSocket Event: {json.dumps(data, indent=4)}")
+
+                            # Verify subscription response
+                            if data.get("type") == "course.subscribe":
+                                print("✅ Subscription Confirmed!")
+                                subscription_verified = True
+                                break  # Stop checking once verified
+
+                    if not subscription_verified:
+                        print("⚠️ Subscription not confirmed. Retrying in 5 seconds...")
+                        await asyncio.sleep(5)
+                        continue  # Restart loop to retry subscription
+
+                    # Listen for all messages
+                    async for message in ws:
+                        if message.type == aiohttp.WSMsgType.TEXT:
+                            data = json.loads(message.data)
+                            print(f"📩 WebSocket Event: {json.dumps(data, indent=4)}")
+
+                            # Log detected event type
+                            event_type = data.get("type")
+                            print(f"🔍 Detected Event Type: {event_type}")
+
                         elif message.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
-                            print("WebSocket closed, attempting to reconnect...")
-                            break
-                    
+                            print("🔄 WebSocket closed. Reconnecting...")
+                            break  # Exit loop to trigger reconnect
+
+        except aiohttp.WSServerHandshakeError as e:
+            if e.status == 401:
+                print("❌ Authentication failed. Check your API token.")
+                return
+            elif e.status == 403:
+                print("❌ Missing permissions. You may need instructor/TA access.")
+                return
+            else:
+                print(f"⚠️ WebSocket handshake failed with status {e.status}. Retrying...")
+            await asyncio.sleep(5)
+
         except aiohttp.ClientError as e:
-            print(f"WebSocket error: {e}. Retrying in {2 ** attempt} seconds...")
-            await asyncio.sleep(2 ** attempt)
-            attempt = min(attempt + 1, 6)  # Exponential backoff with max delay
-        except Exception as e:
-            print(f"Unexpected error: {e}. Retrying...")
-            await asyncio.sleep(1000)    
+            print(f"⚠️ WebSocket error: {e}. Retrying in 5 seconds...")
+            await asyncio.sleep(5)
+
+
+async def main():
+    await listen_for_events()  # Start WebSocket listener
