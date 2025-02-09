@@ -9,3 +9,4 @@ BASE_URL = "https://us.edstem.org/api"
 load_dotenv(override=True)
 API_KEY = os.getenv("API_KEY")
 COURSE_ID = int(os.getenv("COURSE_ID"))
+WS_URL = f"wss://us.edstem.org/api/stream"

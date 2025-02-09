@@ -1,5 +1,9 @@
 from datetime import datetime
-from user import User
+from models.user import User
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
 class Thread:
 	id: int
 	user_id: int
@@ -47,7 +51,7 @@ class Thread:
 	glanced_at: datetime
 	new_reply_count: int
 	duplicate_title: str
-	user: User
+	user: Optional[User] = field(default=None)
 
 
 

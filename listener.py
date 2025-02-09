@@ -1,10 +1,13 @@
 import asyncio
 import json
 import aiohttp
-from config import BASE_URL, API_KEY, COURSE_ID
+from models.threads import Thread
+from datetime import datetime
+from models.user import User
+from config import BASE_URL, API_KEY, COURSE_ID, WS_URL
 
 # Include `_token` in WebSocket URL if required
-WS_URL = f"wss://us.edstem.org/api/stream"
+
 HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 
 
@@ -57,6 +60,8 @@ async def listen_for_events():
                             # Log detected event type
                             event_type = data.get("type")
                             print(f"🔍 Detected Event Type: {event_type}")
+                            # TODO: Pass JSON into event_handler
+                            await event_handler(data)
 
                         elif message.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
                             print("🔄 WebSocket closed. Reconnecting...")
@@ -78,5 +83,23 @@ async def listen_for_events():
             await asyncio.sleep(5)
 
 
+# Handles All Events At Once
+async def event_handler(data):
+    type = data.get("type")
+    if(type == "thread.new"):
+        thread_data = data["data"]["thread"]
+        # Convert datetime fields
+        if thread_data.get("created_at"):
+            thread_data["created_at"] = datetime.fromisoformat(thread_data["created_at"])
+        if thread_data.get("updated_at"):
+            thread_data["updated_at"] = datetime.fromisoformat(thread_data["updated_at"])
+        # Convert user field if necessary
+        if "user" in thread_data and thread_data["user"]:
+            thread_data["user"] = User(**thread_data["user"])
+        thread = Thread(**thread_data)
+        print("Success!!")
+        
+    
 async def main():
     await listen_for_events()  # Start WebSocket listener
+    
