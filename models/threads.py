@@ -44,13 +44,13 @@ class Thread:
 	deleted_at: str
 	pinned_at: str
 	anonymous_id: int
-	vote: int
-	is_seen: bool
-	is_starred: bool
-	is_watched: bool
-	glanced_at: datetime
-	new_reply_count: int
-	duplicate_title: str
+	vote: Optional[int] = None
+	is_seen: Optional[bool] = None
+	is_starred: Optional[bool] = None
+	is_watched: Optional[bool] = None
+	glanced_at: Optional[datetime] = None
+	new_reply_count: Optional[int] = None
+	duplicate_title: Optional[str] = None
 	user: Optional[User] = field(default=None)
 
 

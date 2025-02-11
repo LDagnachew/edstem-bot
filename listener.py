@@ -97,7 +97,7 @@ async def event_handler(data):
         if "user" in thread_data and thread_data["user"]:
             thread_data["user"] = User(**thread_data["user"])
         thread = Thread(**thread_data)
-        print("Success!!")
+        #TODO: With this, now we check for correct formatting.
         
     
 async def main():
