@@ -1,7 +1,8 @@
 import asyncio
 import json
 import aiohttp
-from models.threads import Thread
+from services import decline_thread
+from models.threads import Thread, find_duplicate_thread
 from datetime import datetime
 from models.user import User
 from config import BASE_URL, API_KEY, COURSE_ID, WS_URL
@@ -97,7 +98,11 @@ async def event_handler(data):
         if "user" in thread_data and thread_data["user"]:
             thread_data["user"] = User(**thread_data["user"])
         thread = Thread(**thread_data)
-        #TODO: With this, now we check for correct formatting.
+
+        # With this, now we check for correct formatting.
+        dup_thread = find_duplicate_thread(thread)
+        if dup_thread != None:
+            decline_thread(thread=thread)
         
     
 async def main():

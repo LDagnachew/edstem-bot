@@ -1,5 +1,6 @@
 .env
 *.json
 *.txt
+test.py
 /__pycache__
 /models/__pycache__

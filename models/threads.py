@@ -2,6 +2,12 @@ from datetime import datetime
 from models.user import User
 from dataclasses import dataclass, field
 from typing import Optional
+from sentence_transformers import SentenceTransformer, util
+
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+thread_dict = {}
 
 @dataclass
 class Thread:
@@ -54,4 +60,31 @@ class Thread:
 	user: Optional[User] = field(default=None)
 
 
+# Handles updating the thread pool
+def find_duplicate_thread(new_thread=Thread):
 
+	if not thread_dict or len(thread_dict) == 0:
+		return None
+	
+	titles = [new_thread.title] + list(thread_dict.keys())
+	embeddings = model.encode(titles);
+
+	similarities = util.pytorch_cos_sim(embeddings[0], embeddings[1:]).squeeze(0)
+
+	if similarities.numel() == 0:
+		return None
+	
+	# Find the highest that is similar
+	match_idx = similarities.argmax().item()
+	match_score = similarities[match_idx].item()
+
+	# Duplicate Found!
+	if match_score >= 0.8:
+		return thread_dict[titles[match_idx]]
+
+	return None
+	
+
+
+
+	
