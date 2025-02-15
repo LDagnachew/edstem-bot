@@ -7,18 +7,16 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 
 
 def decline_thread(thread=Thread):
-	post_decline_comment(thread=thread)
 	block_thread(thread=thread)
+	post_decline_comment(thread=thread)
+
 	
 def block_thread(thread=Thread):
-	url = f"{BASE_URL}/courses/{COURSE_ID}/threads/{thread.id}"
+	# https://us.edstem.org/api/threads/6179629/reject
+	url = f"{BASE_URL}/threads/{thread.id}/reject"
 
-	data = {
-		"approved_status": "rejected",
-		"is_locked": True
-	}
-
-	response = requests.patch(url, json=data, headers=HEADERS)
+	print(f"THE URL WE ARAE USING IS: {url}")
+	response = requests.post(url, headers=HEADERS)
 	if response.status_code == 201:
 		print(f"✅ Rejection comment posted for thread {thread.id}")
 	else:

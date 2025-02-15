@@ -103,6 +103,7 @@ async def event_handler(data):
         dup_thread = find_duplicate_thread(thread)
         if dup_thread != None:
             decline_thread(thread=thread)
+            print("✅ Successfully Declined Duplicate Thead!")
         
     
 async def main():
