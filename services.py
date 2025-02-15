@@ -7,12 +7,11 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 
 
 def decline_thread(thread=Thread):
-	block_thread(thread=thread)
 	post_decline_comment(thread=thread)
+	block_thread(thread=thread)
 
 	
 def block_thread(thread=Thread):
-	# https://us.edstem.org/api/threads/6179629/reject
 	url = f"{BASE_URL}/threads/{thread.id}/reject"
 
 	print(f"THE URL WE ARAE USING IS: {url}")
@@ -25,12 +24,17 @@ def block_thread(thread=Thread):
 
 
 def post_decline_comment(thread=Thread):
-	url = f"{BASE_URL}/courses/{COURSE_ID}/threads/{thread.id}/comments"
+	url = f"{BASE_URL}/threads/{thread.id}/comments"
 	
 	message = "This is a duplicate question. Please search for your question before making a post."
 	data = {
-        "content": message,
-        "kind": "thread_rejection"  # Marks this as an official rejection message
+        "comment": {
+			"type": "comment",
+			"kind": "thread_rejection",
+			"content": f"<document version=\"2.0\"><paragraph>{message}</paragraph></document>",
+			"is_private": False,
+			"is_anonymous": True
+    	}  # Marks this as an official rejection message
     }
 
 	response = requests.post(url, json=data, headers=HEADERS)
