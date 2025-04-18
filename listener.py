@@ -1,7 +1,7 @@
 import asyncio
 import json
 import aiohttp
-from services import decline_thread, mark_duplicate
+from services import decline_thread, mark_duplicate, post_mark_review_comment
 from models.threads import Thread, find_duplicate_thread, declined_threads_id
 from datetime import datetime
 from models.user import User
@@ -103,6 +103,8 @@ async def event_handler(data):
         # TODO: DO NOT DECLINE PROFESSORS/INSTRUCTOR POSTS LOL (will add after testing)
         if thread.category == "Exams" and thread.id not in declined_threads_id:
             dup_thread = find_duplicate_thread(thread)
+            if isinstance(dup_thread, dict) and dup_thread.get("requires_review"):
+                post_mark_review_comment(dup_thread["thread"])
             if dup_thread is not None and isinstance(dup_thread, Thread) and not dup_thread.is_private:
                 mark_duplicate(thread=thread, dup_thread=dup_thread)
                 declined_threads_id.insert(thread.id)

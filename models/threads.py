@@ -1,7 +1,6 @@
 from datetime import datetime
 from models.user import User
 from dataclasses import dataclass, field
-from services import post_mark_review_comment
 from typing import Optional
 from sentence_transformers import SentenceTransformer, util
 
@@ -85,8 +84,7 @@ def find_duplicate_thread(new_thread: Thread):
     # For these cases, its best to notify an instructor before declining
     if match_score >= 0.65:
         potential_duplicate_thread = list(thread_dict.values())[match_idx]
-        post_mark_review_comment(potential_duplicate_thread)
-        return None
+        return {"requires_review": True, "thread": potential_duplicate_thread}
 
     # No duplicate → Add the new thread to the pool
     thread_dict[new_thread.title.lower()] = new_thread
