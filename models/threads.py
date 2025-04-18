@@ -1,6 +1,7 @@
 from datetime import datetime
 from models.user import User
 from dataclasses import dataclass, field
+from services import post_mark_review_comment
 from typing import Optional
 from sentence_transformers import SentenceTransformer, util
 
@@ -57,82 +58,41 @@ class Thread:
 	duplicate_title: Optional[str] = None
 	user: Optional[User] = field(default=None)
 
-thread_dict = {
-    "t(n) related question": Thread(
-        id=1234,
-        user_id=5678,
-        course_id=72538,
-        original_id=None,
-        editor_id=None,
-        accepted_id=None,
-        duplicate_id=None,
-        number=1,
-        type="question",
-        title="t(n) related question",
-        content="I'm trying to implement a BST but I'm stuck on inserting nodes.",
-        document="I'm trying to implement a BST but I'm stuck on inserting nodes.",
-        category="Data Structures",
-        subcategory="Trees",
-        subsubcategory="Binary Search Trees",
-        flag_count=0,
-        star_count=2,
-        view_count=50,
-        unique_view_count=40,
-        vote_count=3,
-        reply_count=2,
-        unresolved_count=1,
-        is_locked=False,
-        is_pinned=False,
-        is_private=False,
-        is_endorsed=False,
-        is_answered=False,
-        is_student_answered=True,
-        is_staff_answered=False,
-        is_archived=False,
-        is_anonymous=False,
-        is_megathread=False,
-        anonymous_comments=False,
-        approved_status="approved",
-        created_at=datetime.now(),
-        updated_at=None,
-        deleted_at=None,
-        pinned_at=None,
-        anonymous_id=999999,
-        user=User(
-            id=5678,
-            role="user",
-            name="Test Student",
-            avatar=None,
-            course_role="student",
-            tutorials={72538: "CS Data Structures"}
-        )
-    )
-}
+thread_dict = {}
+declined_threads_id = []
 
 # Handles updating the thread pool
-def find_duplicate_thread(new_thread=Thread):
-	
-	if not thread_dict or len(thread_dict) == 0:
-		return None
-	
-	titles = [new_thread.title.lower()] + list(thread_dict.keys())
-	embeddings = model.encode(titles);
+def find_duplicate_thread(new_thread: Thread):
+    if not thread_dict:
+        return None
 
-	similarities = util.pytorch_cos_sim(embeddings[0], embeddings[1:]).squeeze(0)
+    titles = [new_thread.title.lower()] + [t.title.lower() for t in thread_dict.values()]
+    embeddings = model.encode(titles)
 
-	if similarities.numel() == 0:
-		return None
-	
-	# Find the highest that is similar
-	match_idx = similarities.argmax().item()
-	match_score = similarities[match_idx].item()
+    similarities = util.pytorch_cos_sim(embeddings[0], embeddings[1:]).squeeze(0)
 
-	# Duplicate Found!
-	if match_score >= 0.8:
-		return thread_dict[titles[match_idx]]
+    if similarities.numel() == 0:
+        return None
 
-	return None
-	
+    match_idx = similarities.argmax().item()
+    match_score = similarities[match_idx].item()
+
+    # If similarity exceeds threshold, return the matching thread
+    if match_score >= 0.85:
+        duplicate_thread = list(thread_dict.values())[match_idx]
+        return duplicate_thread
+    
+    # For these cases, its best to notify an instructor before declining
+    if match_score >= 0.65:
+        potential_duplicate_thread = list(thread_dict.values())[match_idx]
+        post_mark_review_comment(potential_duplicate_thread)
+        return None
+
+    # No duplicate → Add the new thread to the pool
+    thread_dict[new_thread.title.lower()] = new_thread
+    return None
+
+
 
 
 

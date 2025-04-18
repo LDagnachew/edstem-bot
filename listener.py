@@ -1,8 +1,8 @@
 import asyncio
 import json
 import aiohttp
-from services import decline_thread
-from models.threads import Thread, find_duplicate_thread
+from services import decline_thread, mark_duplicate
+from models.threads import Thread, find_duplicate_thread, declined_threads_id
 from datetime import datetime
 from models.user import User
 from config import BASE_URL, API_KEY, COURSE_ID, WS_URL
@@ -99,11 +99,14 @@ async def event_handler(data):
             thread_data["user"] = User(**thread_data["user"])
         thread = Thread(**thread_data)
 
-        # With this, now we check for correct formatting.
-        dup_thread = find_duplicate_thread(thread)
-        if dup_thread != None:
-            decline_thread(thread=thread)
-            print("✅ Successfully Declined Duplicate Thead!")
+        # With this, now we check for correct formatting. (For Now Restrict to Exam Questions)
+        # TODO: DO NOT DECLINE PROFESSORS/INSTRUCTOR POSTS LOL (will add after testing)
+        if thread.category == "Exams" and thread.id not in declined_threads_id:
+            dup_thread = find_duplicate_thread(thread)
+            if dup_thread is not None and isinstance(dup_thread, Thread) and not dup_thread.is_private:
+                mark_duplicate(thread=thread, dup_thread=dup_thread)
+                declined_threads_id.insert(thread.id)
+                print("✅ Successfully Declined Duplicate Thead!")
         
     
 async def main():
